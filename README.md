@@ -1,37 +1,91 @@
 # Clinical Cohort Selector
 
-**A precision medicine toolkit for stratifying patient cohorts based on genotype, age, and gender.**
+[![CI](https://github.com/dsugurtuna/clinical-cohort-selector/actions/workflows/ci.yml/badge.svg)](https://github.com/dsugurtuna/clinical-cohort-selector/actions)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
+[![Portfolio](https://img.shields.io/badge/Status-Portfolio_Project-purple.svg)]()
 
-This repository demonstrates the ability to translate complex clinical study protocols into automated, reproducible code. It focuses on **Participant Recall**: selecting the exact right patients for a study while balancing demographic factors and exclusion criteria.
+A precision medicine toolkit for stratifying patient cohorts based on genotype, age, and gender for clinical recall studies.
 
-## 📂 Repository Contents
-
-| Script | Role | Description |
-| :--- | :--- | :--- |
-| `build_stratified_cohort.sh` | **Cohort Builder** | The core logic. Stratifies female participants into 4 biological age stages (Pre/Peri/Early/Late Menopausal) and builds a statistically age-matched male control group. |
-| `impact_analysis_exclusion.sh` | **Feasibility Study** | A diagnostic tool that calculates how many participants would be lost if a new exclusion criterion (e.g., *APOE-e2* carriers) were introduced. Essential for study planning. |
-| `integrate_phenotypes.py` | **Data Integration** | A Python utility that merges disparate data sources—genotype data (CSV) and clinical phenotype data (Space-delimited text)—into a single master record. |
-
-## 🌟 Key Capabilities
-
-### 1. Complex Stratification Logic
-Clinical trials often require strict demographic balancing. This toolkit automates:
-*   **Biological Staging:** Grouping participants not just by age, but by biological relevance (e.g., *Peri-menopausal: 45-49*).
-*   **Proportional Matching:** The male control group is not random; it is built to mirror the age distribution of the female cohort exactly.
-
-### 2. Exclusion Criteria Management
-*   **Safety First:** The pipeline rigorously filters out participants with specific risk alleles (e.g., *APOE-e2*), ensuring patient safety and study validity.
-*   **Impact Assessment:** Before running a recall, the `impact_analysis_exclusion.sh` script predicts the "cost" of these exclusions in terms of participant numbers.
-
-### 3. Reproducible Science
-*   **Deterministic Output:** The sorting and selection logic ensures that running the script twice yields the exact same list of patients, which is critical for regulatory compliance.
-*   **Audit Trails:** Generates detailed summary reports (`recall_summary.txt`) documenting exactly how many patients were selected for each group.
-
-## 🛠️ Technical Stack
-
-*   **Bash/AWK**: For high-speed text processing and logic implementation.
-*   **Python**: For structured data integration and joining.
-*   **CSV**: Standardized input/output formats for interoperability with clinical systems.
+> **Portfolio disclaimer:** This repository contains sanitised, generalised versions of tooling developed at NIHR BioResource. No real participant data or internal paths are included.
 
 ---
-*Created by [dsugurtuna](https://github.com/dsugurtuna)*
+
+## Overview
+
+Clinical trials frequently require strictly balanced participant cohorts. This toolkit automates:
+
+- **Biological-stage stratification** — grouping female participants into pre/peri/early/late menopausal stages by age band.
+- **Age-matched control groups** — building male cohorts proportional to the female selection.
+- **Genotype-based filtering** — including only target APOE genotypes (e3/e3, e3/e4, e4/e4) and optionally excluding all e2 carriers.
+- **Exclusion impact analysis** — quantifying participant loss before committing to a criterion.
+- **Phenotype integration** — merging genotype and clinical phenotype data into a master record.
+
+## Repository Structure
+
+```text
+.
+├── src/cohort_selector/          Python package
+│   ├── __init__.py
+│   ├── stratifier.py             Stage-based cohort builder
+│   ├── impact.py                 Exclusion impact analyser
+│   └── integrator.py             Genotype + phenotype joiner
+├── tests/                        Pytest test suite
+│   ├── test_stratifier.py
+│   ├── test_impact.py
+│   └── test_integrator.py
+├── legacy/                       Original shell/Python scripts
+│   ├── build_stratified_cohort.sh
+│   ├── impact_analysis_exclusion.sh
+│   └── integrate_phenotypes.py
+├── .github/workflows/ci.yml
+├── pyproject.toml
+└── README.md
+```
+
+## Quick Start
+
+```bash
+pip install -e ".[dev]"
+```
+
+### Python API
+
+```python
+from cohort_selector import CohortStratifier, ExclusionImpactAnalyser, PhenotypeIntegrator
+
+# Build a recall list
+stratifier = CohortStratifier(exclude_e2=True)
+result = stratifier.build_recall(
+    candidates_csv="available_females.csv",
+    males_csv="available_males.csv",
+    e4_per_stage=80,
+    e3e3_per_stage=80,
+)
+stratifier.export_recall(result, "deliverables/")
+
+# Assess exclusion impact
+analyser = ExclusionImpactAnalyser()
+report = analyser.analyse("master_data.csv", exclusion_pattern="E2")
+print(analyser.format_report(report))
+
+# Merge genotype + phenotype
+integrator = PhenotypeIntegrator()
+report = integrator.merge("genotypes.csv", "phenotypes.txt", "master.csv")
+print(f"Matched {report.matched_records} records")
+```
+
+## Testing
+
+```bash
+make test   # or: pytest tests/ -v
+```
+
+## Jira Provenance
+
+- **Recall-study design** — stratified recall lists with 50/50 e4 carrier split across biological stages (NBR267-style, 816-participant design).
+- **Exclusion impact analysis** — quantifying the cost of introducing e2-carrier exclusion before finalising the protocol.
+- **Data integration** — joining APOE genotype calls with clinical phenotype data (age, gender) from disparate sources.
+
+## Licence
+
+MIT
