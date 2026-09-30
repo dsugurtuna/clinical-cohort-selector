@@ -176,9 +176,9 @@ class CohortStratifier:
         self,
         candidates_csv: str | Path,
         males_csv: str | Path | None = None,
-        e4_per_stage: int = 80,
-        e3e3_per_stage: int = 80,
-        male_ratio: float = 0.22,
+        e4_per_stage: int = 75,
+        e3e3_per_stage: int = 75,
+        male_ratio: float = 0.25,
         seed: int | None = None,
     ) -> StratificationResult:
         """Build the female stage lists and an age-matched male list.

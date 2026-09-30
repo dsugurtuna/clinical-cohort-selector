@@ -94,12 +94,6 @@ Uses APOE genotypes from [apoe-genotyping-toolkit](https://github.com/dsugurtuna
 - Read stage definitions and targets from a small config file kept with the output.
 - Write a machine-readable manifest (inputs, seed, targets, shortfalls) next to the lists.
 
-## Jira Provenance
-
-- **Recall-study design** — stratified recall lists with 50/50 e4 carrier split across biological stages (NBR267-style, 816-participant design).
-- **Exclusion impact analysis** — quantifying the cost of introducing e2-carrier exclusion before finalising the protocol.
-- **Data integration** — joining APOE genotype calls with clinical phenotype data (age, gender) from disparate sources.
-
 ## Licence
 
 MIT is declared in `pyproject.toml`, but no licence file is included yet.

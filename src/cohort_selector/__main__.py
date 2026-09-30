@@ -21,9 +21,9 @@ def _build_parser() -> argparse.ArgumentParser:
     strat = sub.add_parser("stratify", help="build recall lists")
     strat.add_argument("candidates_csv")
     strat.add_argument("--males", help="separate CSV of male candidates")
-    strat.add_argument("--e4-per-stage", type=int, default=80)
-    strat.add_argument("--e3e3-per-stage", type=int, default=80)
-    strat.add_argument("--male-ratio", type=float, default=0.22)
+    strat.add_argument("--e4-per-stage", type=int, default=75)
+    strat.add_argument("--e3e3-per-stage", type=int, default=75)
+    strat.add_argument("--male-ratio", type=float, default=0.25)
     strat.add_argument("--seed", type=int, help="draw candidates in seeded order")
     strat.add_argument(
         "--exclude-e2",
