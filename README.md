@@ -51,7 +51,11 @@ pip install -e ".[dev]"
 ### Python API
 
 ```python
-from cohort_selector import CohortStratifier, ExclusionImpactAnalyser, PhenotypeIntegrator
+from cohort_selector import (
+    CohortStratifier,
+    ExclusionImpactAnalyser,
+    PhenotypeIntegrator,
+)
 
 # Build a recall list
 stratifier = CohortStratifier(exclude_e2=True)

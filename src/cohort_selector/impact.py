@@ -87,7 +87,7 @@ class ExclusionImpactAnalyser:
 
         report.total_before = len(rows)
 
-        remaining: list[dict] = []
+        remaining: list[dict[str, str]] = []
         for row in rows:
             gt = row.get("genotype", row.get("apoe", ""))
             if exclusion_pattern.upper() in gt.upper():
@@ -120,7 +120,8 @@ class ExclusionImpactAnalyser:
             f"Exclusion Impact Analysis: {report.criterion_label}",
             "=" * 60,
             f"Total participants before    : {report.total_before:,}",
-            f"Excluded by criterion        : {report.excluded_count:,} ({report.exclusion_rate:.1%})",
+            f"Excluded by criterion        : {report.excluded_count:,} "
+            f"({report.exclusion_rate:.1%})",
             f"Remaining in pool            : {report.remaining_count:,}",
             f"  Females remaining          : {report.females_remaining:,}",
             f"  Males remaining            : {report.males_remaining:,}",

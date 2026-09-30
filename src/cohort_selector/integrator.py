@@ -52,7 +52,7 @@ class PhenotypeIntegrator:
         has_header: bool = False,
     ) -> dict[str, tuple[str, str]]:
         """
-        Load genotype file and return mapping of sample_id to (participant_id, genotype).
+        Load a genotype file as {sample_id: (participant_id, genotype)}.
         """
         path = Path(filepath)
         if not path.exists():
@@ -132,7 +132,7 @@ class PhenotypeIntegrator:
         out = Path(output_csv)
         out.parent.mkdir(parents=True, exist_ok=True)
 
-        matched: list[dict] = []
+        matched: list[dict[str, str]] = []
         for sid, (pid, gt) in geno.items():
             if sid in pheno:
                 age, gender = pheno[sid]
