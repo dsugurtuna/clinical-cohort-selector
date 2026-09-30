@@ -1,6 +1,7 @@
 """Tests for the ExclusionImpactAnalyser."""
 
 import pytest
+
 from cohort_selector.impact import ExclusionImpactAnalyser
 
 

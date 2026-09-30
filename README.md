@@ -1,91 +1,103 @@
 # Clinical Cohort Selector
 
-[![CI](https://github.com/dsugurtuna/clinical-cohort-selector/actions/workflows/ci.yml/badge.svg)](https://github.com/dsugurtuna/clinical-cohort-selector/actions)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
-[![Portfolio](https://img.shields.io/badge/Status-Portfolio_Project-purple.svg)]()
+[![CI](https://github.com/dsugurtuna/clinical-cohort-selector/actions/workflows/ci.yml/badge.svg)](https://github.com/dsugurtuna/clinical-cohort-selector/actions/workflows/ci.yml)
 
-A precision medicine toolkit for stratifying patient cohorts based on genotype, age, and gender for clinical recall studies.
+Build genotype-balanced, age-matched recall lists from a genotyped participant pool, and see what each exclusion costs before you commit to it.
 
 > **Portfolio disclaimer:** This repository contains sanitised, generalised versions of tooling developed at NIHR BioResource. No real participant data or internal paths are included.
 
----
+## The problem
 
-## Overview
+A recall study often needs fixed numbers of APOE e4 carriers and e3/e3 controls in each age group, plus a comparison group of men matched on age. Doing that by hand in spreadsheets is slow and hard to check, and a late change to the criteria (for example, excluding e2 carriers) can quietly leave some groups short.
 
-Clinical trials frequently require strictly balanced participant cohorts. This toolkit automates:
+## What this does
 
-- **Biological-stage stratification** — grouping female participants into pre/peri/early/late menopausal stages by age band.
-- **Age-matched control groups** — building male cohorts proportional to the female selection.
-- **Genotype-based filtering** — including only target APOE genotypes (e3/e3, e3/e4, e4/e4) and optionally excluding all e2 carriers.
-- **Exclusion impact analysis** — quantifying participant loss before committing to a criterion.
-- **Phenotype integration** — merging genotype and clinical phenotype data into a master record.
+- **Stratifies women by life stage.** Age bands are grouped into stages (default: pre 35-44, peri 45-49, early 50-54, late 55-69) and each stage gets a target number of e4 carriers (e3/e4, e4/e4) and e3/e3 controls.
+- **Age-matches men to the women actually selected.** The male target is a share of the female total, split evenly between e4 carriers and e3/e3, and spread across age bands in the same proportions as the selected women.
+- **Handles e2 explicitly.** By default e2/e4 is excluded; with `--no-exclude-e2` it counts as an e4 carrier. e2/e2 and e2/e3 are never targets.
+- **Shows shortfalls.** Each group reports selected versus target, so an under-filled stage is visible rather than silent.
+- **Measures an exclusion's impact** before it is applied: how many people, which sexes, which genotypes remain.
+- **Joins genotypes to age and sex** from two differently formatted files and reports what did not match.
 
-## Repository Structure
+## Quickstart
 
-```text
-.
-├── src/cohort_selector/          Python package
-│   ├── __init__.py
-│   ├── stratifier.py             Stage-based cohort builder
-│   ├── impact.py                 Exclusion impact analyser
-│   └── integrator.py             Genotype + phenotype joiner
-├── tests/                        Pytest test suite
-│   ├── test_stratifier.py
-│   ├── test_impact.py
-│   └── test_integrator.py
-├── legacy/                       Original shell/Python scripts
-│   ├── build_stratified_cohort.sh
-│   ├── impact_analysis_exclusion.sh
-│   └── integrate_phenotypes.py
-├── .github/workflows/ci.yml
-├── pyproject.toml
-└── README.md
-```
-
-## Quick Start
+Runs on the synthetic data in `examples/` (800 invented participants).
 
 ```bash
+git clone https://github.com/dsugurtuna/clinical-cohort-selector.git
+cd clinical-cohort-selector
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
+pytest
+
+python -m cohort_selector impact examples/candidates.csv --pattern E2
+python -m cohort_selector stratify examples/candidates.csv \
+  --e4-per-stage 20 --e3e3-per-stage 20 --seed 1 --out recall/
+python -m cohort_selector merge examples/genotypes.csv examples/phenotypes.txt master.csv
 ```
 
-### Python API
+`stratify` prints a summary such as `peri: 27 (e4 carriers 7/20, e3/e3 20/20, shortfall 13)`: the synthetic pool has too few e4 carriers aged 45-49 to fill that stage.
+
+From Python:
 
 ```python
-from cohort_selector import CohortStratifier, ExclusionImpactAnalyser, PhenotypeIntegrator
+from cohort_selector import CohortStratifier
 
-# Build a recall list
 stratifier = CohortStratifier(exclude_e2=True)
 result = stratifier.build_recall(
-    candidates_csv="available_females.csv",
-    males_csv="available_males.csv",
-    e4_per_stage=80,
-    e3e3_per_stage=80,
+    "examples/candidates.csv", e4_per_stage=20, e3e3_per_stage=20, seed=1
 )
-stratifier.export_recall(result, "deliverables/")
-
-# Assess exclusion impact
-analyser = ExclusionImpactAnalyser()
-report = analyser.analyse("master_data.csv", exclusion_pattern="E2")
-print(analyser.format_report(report))
-
-# Merge genotype + phenotype
-integrator = PhenotypeIntegrator()
-report = integrator.merge("genotypes.csv", "phenotypes.txt", "master.csv")
-print(f"Matched {report.matched_records} records")
+for name, stage in result.female_stages.items():
+    print(name, stage.total, "shortfall", stage.shortfall)
 ```
 
-## Testing
+## How it works
 
-```bash
-make test   # or: pytest tests/ -v
+```mermaid
+flowchart LR
+    A[candidates.csv] --> B[normalise genotype<br/>e4/e3 -> E3/E4]
+    B --> C{target genotype?}
+    C -->|no| X[excluded, counted]
+    C -->|yes| D[pools by sex, age band<br/>and e4 status]
+    D --> E[women: fill each stage<br/>to its targets]
+    E --> F[age-band mix of<br/>selected women]
+    F --> G[men: apportion target<br/>per band, then fill]
+    E & G --> H[CSV lists + summary<br/>with shortfalls]
 ```
 
-## Jira Provenance
+Input columns: `participant_id, genotype, gender, age_band` (for `merge`: `sample_id,participant_id,genotype` and `sample_id age gender`).
 
-- **Recall-study design** — stratified recall lists with 50/50 e4 carrier split across biological stages (NBR267-style, 816-participant design).
-- **Exclusion impact analysis** — quantifying the cost of introducing e2-carrier exclusion before finalising the protocol.
-- **Data integration** — joining APOE genotype calls with clinical phenotype data (age, gender) from disparate sources.
+## Design decisions
+
+- **Age-matching follows the women who were selected, not the whole pool.** If a stage runs short, the men should mirror the study group that exists, not the one that was planned.
+- **Largest-remainder apportioning.** Rounding each band separately can over- or under-shoot the male total; this method always hits it exactly and breaks ties by band name, so reruns agree.
+- **Deterministic selection.** Without `--seed` candidates are taken in file order; with a seed they are drawn in a reproducible random order. Either way the same inputs give the same list, which matters when a list has to be re-issued or audited. A seed avoids the bias of taking whoever happens to be first in the file.
+- **Genotypes are normalised before matching.** `e4/e3`, `E3E4` and `E3/E4` are the same genotype; string equality alone would drop some people.
+- **Shortfalls are data, not warnings.** They are stored on each allocation and written to the summary so they survive into whatever reads the output.
+- **No third-party dependencies.** The package uses the standard library only, which keeps it easy to run inside a restricted analysis environment.
+
+## Limitations and what it is not
+
+- Life stage is inferred from age band only. There is no hormonal or clinical menopausal staging.
+- It selects; it does not recruit or consent. Who may be contacted, and how, is decided elsewhere.
+- Matching is on age band and e4 status only, not on other covariates such as ancestry or recruitment site.
+- The impact analyser matches a substring of the genotype (`E2` finds e2/e3, e2/e4 and e2/e2); it is a quick check, not a rules engine.
+- The scripts in `legacy/` are kept as originally published for reference. They are not maintained, not linted, and create placeholder input files when real ones are missing.
+
+## Where this fits
+
+Uses APOE genotypes from [apoe-genotyping-toolkit](https://github.com/dsugurtuna/apoe-genotyping-toolkit). Related: [recall-study-generator](https://github.com/dsugurtuna/recall-study-generator) and [snp-feasibility-checker](https://github.com/dsugurtuna/snp-feasibility-checker).
+
+## Roadmap
+
+- Match men on exact age within a band, not just band counts.
+- Read stage definitions and targets from a small config file kept with the output.
+- Write a machine-readable manifest (inputs, seed, targets, shortfalls) next to the lists.
 
 ## Licence
 
-MIT
+MIT is declared in `pyproject.toml`, but no licence file is included yet.
+
+---
+
+Personal project by [Ugur Tuna](https://github.com/dsugurtuna). Not affiliated with or endorsed by any employer.

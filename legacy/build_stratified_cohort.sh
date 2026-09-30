@@ -76,7 +76,7 @@ build_stage () {
       }
     }
     END{
-      # Target: 80 E4+ and 80 E3/E3 per stage (Simulation targets reduced for demo)
+      # Target: 75 E4+ and 75 E3/E3 per stage (Simulation targets reduced for demo)
       needed4=1; needed33=1; 
       
       c4=0;

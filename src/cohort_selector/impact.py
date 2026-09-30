@@ -13,7 +13,6 @@ import csv
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ class ImpactReport:
     remaining_count: int = 0
     females_remaining: int = 0
     males_remaining: int = 0
-    breakdown_by_genotype: Dict[str, int] = field(default_factory=dict)
+    breakdown_by_genotype: dict[str, int] = field(default_factory=dict)
 
     @property
     def exclusion_rate(self) -> float:
@@ -55,7 +54,7 @@ class ExclusionImpactAnalyser:
         self,
         master_csv: str,
         exclusion_pattern: str = "E2",
-        criterion_label: Optional[str] = None,
+        criterion_label: str | None = None,
     ) -> ImpactReport:
         """
         Analyse the impact of excluding participants whose genotype
@@ -88,7 +87,7 @@ class ExclusionImpactAnalyser:
 
         report.total_before = len(rows)
 
-        remaining: List[dict] = []
+        remaining: list[dict[str, str]] = []
         for row in rows:
             gt = row.get("genotype", row.get("apoe", ""))
             if exclusion_pattern.upper() in gt.upper():
@@ -98,7 +97,9 @@ class ExclusionImpactAnalyser:
 
         report.remaining_count = len(remaining)
         report.females_remaining = sum(
-            1 for r in remaining if r.get("gender", "").strip().lower() in ("female", "f")
+            1
+            for r in remaining
+            if r.get("gender", "").strip().lower() in ("female", "f")
         )
         report.males_remaining = sum(
             1 for r in remaining if r.get("gender", "").strip().lower() in ("male", "m")
@@ -106,7 +107,9 @@ class ExclusionImpactAnalyser:
 
         for r in remaining:
             gt = r.get("genotype", r.get("apoe", "Unknown"))
-            report.breakdown_by_genotype[gt] = report.breakdown_by_genotype.get(gt, 0) + 1
+            report.breakdown_by_genotype[gt] = (
+                report.breakdown_by_genotype.get(gt, 0) + 1
+            )
 
         return report
 
@@ -117,13 +120,16 @@ class ExclusionImpactAnalyser:
             f"Exclusion Impact Analysis: {report.criterion_label}",
             "=" * 60,
             f"Total participants before    : {report.total_before:,}",
-            f"Excluded by criterion        : {report.excluded_count:,} ({report.exclusion_rate:.1%})",
+            f"Excluded by criterion        : {report.excluded_count:,} "
+            f"({report.exclusion_rate:.1%})",
             f"Remaining in pool            : {report.remaining_count:,}",
             f"  Females remaining          : {report.females_remaining:,}",
             f"  Males remaining            : {report.males_remaining:,}",
             "",
             "Remaining genotype breakdown:",
         ]
-        for gt, count in sorted(report.breakdown_by_genotype.items(), key=lambda x: -x[1]):
+        for gt, count in sorted(
+            report.breakdown_by_genotype.items(), key=lambda x: -x[1]
+        ):
             lines.append(f"  {gt:15s}  {count:>6,}")
         return "\n".join(lines)
