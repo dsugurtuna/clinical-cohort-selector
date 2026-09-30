@@ -13,7 +13,6 @@ import csv
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ class PhenotypeIntegrator:
         genotype_col: int = 2,
         delimiter: str = ",",
         has_header: bool = False,
-    ) -> Dict[str, Tuple[str, str]]:
+    ) -> dict[str, tuple[str, str]]:
         """
         Load genotype file and return mapping of sample_id to (participant_id, genotype).
         """
@@ -59,7 +58,7 @@ class PhenotypeIntegrator:
         if not path.exists():
             raise FileNotFoundError(f"Genotype file not found: {filepath}")
 
-        mapping: Dict[str, Tuple[str, str]] = {}
+        mapping: dict[str, tuple[str, str]] = {}
         with open(path) as fh:
             reader = csv.reader(fh, delimiter=delimiter)
             if has_header:
@@ -75,8 +74,8 @@ class PhenotypeIntegrator:
     def load_phenotypes(
         self,
         filepath: str,
-        delimiter: Optional[str] = None,
-    ) -> Dict[str, Tuple[str, str]]:
+        delimiter: str | None = None,
+    ) -> dict[str, tuple[str, str]]:
         """
         Load phenotype file and return mapping of sample_id to (age, gender).
 
@@ -86,10 +85,12 @@ class PhenotypeIntegrator:
         if not path.exists():
             raise FileNotFoundError(f"Phenotype file not found: {filepath}")
 
-        mapping: Dict[str, Tuple[str, str]] = {}
+        mapping: dict[str, tuple[str, str]] = {}
         with open(path) as fh:
             for line in fh:
-                parts = line.strip().split(delimiter) if delimiter else line.strip().split()
+                parts = (
+                    line.strip().split(delimiter) if delimiter else line.strip().split()
+                )
                 if len(parts) >= 3:
                     mapping[parts[0]] = (parts[1], parts[2])
         return mapping
@@ -118,8 +119,9 @@ class PhenotypeIntegrator:
         -------
         IntegrationReport
         """
-        geno = self.load_genotypes(genotype_csv, delimiter=genotype_delimiter,
-                                    has_header=genotype_has_header)
+        geno = self.load_genotypes(
+            genotype_csv, delimiter=genotype_delimiter, has_header=genotype_has_header
+        )
         pheno = self.load_phenotypes(phenotype_file)
 
         report = IntegrationReport(
@@ -130,24 +132,29 @@ class PhenotypeIntegrator:
         out = Path(output_csv)
         out.parent.mkdir(parents=True, exist_ok=True)
 
-        matched: List[dict] = []
+        matched: list[dict] = []
         for sid, (pid, gt) in geno.items():
             if sid in pheno:
                 age, gender = pheno[sid]
-                matched.append({
-                    "sample_id": sid,
-                    "participant_id": pid,
-                    "genotype": gt,
-                    "age": age,
-                    "gender": gender,
-                })
+                matched.append(
+                    {
+                        "sample_id": sid,
+                        "participant_id": pid,
+                        "genotype": gt,
+                        "age": age,
+                        "gender": gender,
+                    }
+                )
 
         report.matched_records = len(matched)
         report.unmatched_genotype = len(geno) - len(matched)
         report.unmatched_phenotype = len(pheno) - len(matched)
 
         with open(out, "w", newline="") as fh:
-            writer = csv.DictWriter(fh, fieldnames=["sample_id", "participant_id", "genotype", "age", "gender"])
+            writer = csv.DictWriter(
+                fh,
+                fieldnames=["sample_id", "participant_id", "genotype", "age", "gender"],
+            )
             writer.writeheader()
             writer.writerows(matched)
 

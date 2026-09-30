@@ -17,19 +17,18 @@ import csv
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 
 # Default biological stages for female participants
-DEFAULT_STAGES: Dict[str, List[str]] = {
+DEFAULT_STAGES: dict[str, list[str]] = {
     "pre": ["35-39", "40-44"],
     "peri": ["45-49"],
     "early": ["50-54"],
     "late": ["55-59", "60-64", "65-69"],
 }
 
-VALID_GENOTYPES: Set[str] = {"E3/E3", "E3/E4", "E4/E4"}
+VALID_GENOTYPES: set[str] = {"E3/E3", "E3/E4", "E4/E4"}
 
 
 @dataclass
@@ -37,8 +36,8 @@ class StageAllocation:
     """Participants allocated to a single biological stage."""
 
     stage_name: str
-    e4_carriers: List[dict] = field(default_factory=list)
-    e3e3_controls: List[dict] = field(default_factory=list)
+    e4_carriers: list[dict] = field(default_factory=list)
+    e3e3_controls: list[dict] = field(default_factory=list)
 
     @property
     def total(self) -> int:
@@ -49,8 +48,8 @@ class StageAllocation:
 class StratificationResult:
     """Complete output of a cohort stratification run."""
 
-    female_stages: Dict[str, StageAllocation] = field(default_factory=dict)
-    male_allocation: Optional[StageAllocation] = None
+    female_stages: dict[str, StageAllocation] = field(default_factory=dict)
+    male_allocation: StageAllocation | None = None
     excluded_count: int = 0
     total_input: int = 0
 
@@ -79,7 +78,7 @@ class CohortStratifier:
 
     def __init__(
         self,
-        stages: Optional[Dict[str, List[str]]] = None,
+        stages: dict[str, list[str]] | None = None,
         exclude_e2: bool = True,
     ):
         self.stages = stages or DEFAULT_STAGES
@@ -88,8 +87,8 @@ class CohortStratifier:
     def load_candidates(
         self,
         filepath: str,
-        gender_filter: Optional[str] = None,
-    ) -> List[dict]:
+        gender_filter: str | None = None,
+    ) -> list[dict]:
         """
         Load and filter candidates from a CSV file.
 
@@ -99,7 +98,7 @@ class CohortStratifier:
         if not path.exists():
             raise FileNotFoundError(f"File not found: {filepath}")
 
-        candidates: List[dict] = []
+        candidates: list[dict] = []
         with open(path) as fh:
             reader = csv.DictReader(fh)
             for row in reader:
@@ -111,7 +110,10 @@ class CohortStratifier:
                 if gt.upper() not in {g.upper() for g in VALID_GENOTYPES}:
                     continue
                 # Gender filter
-                if gender_filter and row.get("gender", "").strip().lower() != gender_filter.lower():
+                if (
+                    gender_filter
+                    and row.get("gender", "").strip().lower() != gender_filter.lower()
+                ):
                     continue
                 candidates.append(row)
         return candidates
@@ -119,7 +121,7 @@ class CohortStratifier:
     def build_recall(
         self,
         candidates_csv: str,
-        males_csv: Optional[str] = None,
+        males_csv: str | None = None,
         e4_per_stage: int = 80,
         e3e3_per_stage: int = 80,
         male_ratio: float = 0.22,
@@ -152,7 +154,7 @@ class CohortStratifier:
         result = StratificationResult(total_input=len(females) + len(males))
 
         # Index females by age band
-        by_band: Dict[str, Dict[str, List[dict]]] = {}
+        by_band: dict[str, dict[str, list[dict]]] = {}
         for f in females:
             band = f.get("age_band", "").strip()
             gt = f.get("genotype", "").strip().upper()
@@ -165,8 +167,8 @@ class CohortStratifier:
         # Build female stages
         for stage_name, bands in self.stages.items():
             alloc = StageAllocation(stage_name=stage_name)
-            e4_pool: List[dict] = []
-            e3_pool: List[dict] = []
+            e4_pool: list[dict] = []
+            e3_pool: list[dict] = []
             for b in bands:
                 if b in by_band:
                     e4_pool.extend(by_band[b]["E4"])
@@ -179,21 +181,23 @@ class CohortStratifier:
         total_females = sum(s.total for s in result.female_stages.values())
         male_target = int(total_females * male_ratio)
         male_alloc = StageAllocation(stage_name="male")
-        e4_males = [m for m in males if m.get("genotype", "").upper() in ("E3/E4", "E4/E4")]
+        e4_males = [
+            m for m in males if m.get("genotype", "").upper() in ("E3/E4", "E4/E4")
+        ]
         e3_males = [m for m in males if m.get("genotype", "").upper() == "E3/E3"]
         half = male_target // 2
         male_alloc.e4_carriers = e4_males[:half]
-        male_alloc.e3e3_controls = e3_males[:male_target - half]
+        male_alloc.e3e3_controls = e3_males[: male_target - half]
         result.male_allocation = male_alloc
 
         return result
 
     @staticmethod
-    def export_recall(result: StratificationResult, output_dir: str) -> List[str]:
+    def export_recall(result: StratificationResult, output_dir: str) -> list[str]:
         """Write recall lists and summary to CSV files."""
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)
-        files: List[str] = []
+        files: list[str] = []
 
         # Female lists per stage
         for stage_name, alloc in result.female_stages.items():
@@ -202,8 +206,14 @@ class CohortStratifier:
                 writer = csv.writer(fh)
                 writer.writerow(["participant_id", "genotype", "gender", "age_band"])
                 for row in alloc.e4_carriers + alloc.e3e3_controls:
-                    writer.writerow([row.get("participant_id"), row.get("genotype"),
-                                     row.get("gender"), row.get("age_band")])
+                    writer.writerow(
+                        [
+                            row.get("participant_id"),
+                            row.get("genotype"),
+                            row.get("gender"),
+                            row.get("age_band"),
+                        ]
+                    )
             files.append(str(p))
 
         # Male list
@@ -212,19 +222,34 @@ class CohortStratifier:
             with open(p, "w", newline="") as fh:
                 writer = csv.writer(fh)
                 writer.writerow(["participant_id", "genotype", "gender", "age_band"])
-                for row in result.male_allocation.e4_carriers + result.male_allocation.e3e3_controls:
-                    writer.writerow([row.get("participant_id"), row.get("genotype"),
-                                     row.get("gender"), row.get("age_band")])
+                for row in (
+                    result.male_allocation.e4_carriers
+                    + result.male_allocation.e3e3_controls
+                ):
+                    writer.writerow(
+                        [
+                            row.get("participant_id"),
+                            row.get("genotype"),
+                            row.get("gender"),
+                            row.get("age_band"),
+                        ]
+                    )
             files.append(str(p))
 
         # Summary
         summary = out / "recall_summary.txt"
-        lines = [f"Recall Summary — {result.total_selected} selected from {result.total_input}\n"]
+        lines = [
+            f"Recall Summary — {result.total_selected} selected from {result.total_input}\n"
+        ]
         for name, alloc in result.female_stages.items():
-            lines.append(f"  {name}: {alloc.total} (e4+={len(alloc.e4_carriers)}, e3/e3={len(alloc.e3e3_controls)})")
+            lines.append(
+                f"  {name}: {alloc.total} (e4+={len(alloc.e4_carriers)}, e3/e3={len(alloc.e3e3_controls)})"
+            )
         if result.male_allocation:
             ma = result.male_allocation
-            lines.append(f"  male: {ma.total} (e4+={len(ma.e4_carriers)}, e3/e3={len(ma.e3e3_controls)})")
+            lines.append(
+                f"  male: {ma.total} (e4+={len(ma.e4_carriers)}, e3/e3={len(ma.e3e3_controls)})"
+            )
         summary.write_text("\n".join(lines))
         files.append(str(summary))
 

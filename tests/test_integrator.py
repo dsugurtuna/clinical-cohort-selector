@@ -1,6 +1,7 @@
 """Tests for the PhenotypeIntegrator."""
 
 import pytest
+
 from cohort_selector.integrator import PhenotypeIntegrator
 
 

@@ -10,8 +10,8 @@ Author: Ugur Tuna
 
 __version__ = "2.0.0"
 
-from cohort_selector.stratifier import CohortStratifier
 from cohort_selector.impact import ExclusionImpactAnalyser
 from cohort_selector.integrator import PhenotypeIntegrator
+from cohort_selector.stratifier import CohortStratifier
 
 __all__ = ["CohortStratifier", "ExclusionImpactAnalyser", "PhenotypeIntegrator"]
